@@ -1,25 +1,27 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
-import Home from '../views/Home.vue'
+import PaginaArranque from '../views/Home.vue'
+import Login from '../views/Login.vue'
+import store from '@/store'
+
 
 Vue.use(VueRouter)
 
   const routes = [
   {
-    path: '/',
-    name: 'Home',
-    component: Home
+    path: '/pagina-arranque',
+    name: 'pagina-arranque',
+    component: PaginaArranque,
+    meta: { libre:false, ADMIN: true}
   },
   {
-    path: '/about',
-    name: 'About',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: function () {
-      return import(/* webpackChunkName: "about" */ '../views/About.vue')
-    }
-  }
+    path: '/',
+    name: 'Login',
+    component: Login,
+    meta: { libre: true }
+  },
+
+
 ]
 
 const router = new VueRouter({
@@ -27,5 +29,20 @@ const router = new VueRouter({
   base: process.env.BASE_URL,
   routes
 })
+
+// router.beforeEach( (to, from, next) => {
+
+//   if(to.matched.some(record => record.meta.libre)){
+//     next()
+//   }else if(store.state.Login.datosUsuario){
+//     if(to.matched.some(record => record.meta.ADMIN)){
+//       next()
+//     }
+//   }else{
+//     next({
+//       name: 'pagina-arranque'
+//     })
+//   }
+// })
 
 export default router

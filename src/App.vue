@@ -1,87 +1,104 @@
 <template>
   <v-app id="contenedor">
-    <v-container >
-      <v-row justify="right">
-        
-        <v-col cols="12">
-          <v-card-actions>
-            <v-card-title class="font-weight-bold headling-1 white--text">
-              PROYECTOS GAMA
-            </v-card-title>
 
-            <v-spacer></v-spacer>
-            <span>
-              <v-img src="logo.png" height="70px" width="100px" contain/>
-            </span>
-          </v-card-actions>
-        </v-col>
+    <v-snackbar v-model="alerta.activo" multi-line :vertical="alerta.vertical" top right :color="alerta.color" > 
+      <strong> {{alerta.texto}} </strong>
+      <template v-slot:action="{ attrs }">
+        <v-btn color="white" text @click="alerta.activo = false" v-bind="attrs"> Cerrar </v-btn>
+      </template>
+    </v-snackbar>
 
-        <v-col cols="12"  sm="6" md="4" lg="3" xl="2" v-for="control in AppControl" :key="control.id" >
-          <a :href="control.path" style="text-decoration: none">
-            <v-card class="elevation-14 pa-1" shaped v-ripple  height="100%">
-              <v-card-text class="mt-2">
+    <v-main id="fondo">
+      <v-slide-y-transition mode="out-in">
+        <!-- <router-view/> -->
+        <Login v-if="!getLogeado"/>
+        <Home v-else/>
+      </v-slide-y-transition>
+    </v-main>
 
-                <v-img
-                  :src="control.foto"
-                  :lazy-src="`https://picsum.photos/10/6?image=${1 * 5 + 10}`"
-                  aspect-ratio="1.5"
-                  class=" pa-2 mb-5"
-                  width="100%" 
-                  height="220px"
-                  id="logo"
-                  contain
-                  
-                >
-                  <template v-slot:placeholder>
-                    <v-row
-                      class="fill-height ma-0"
-                      align="center"
-                      justify="center"
-                    >
-                      <v-progress-circular indeterminate color="grey lighten-5"></v-progress-circular>
-                    </v-row>
-                  </template>
-                </v-img>
-                <v-card-text class="font-weight-black text-h6" align="center">
-                   {{ control.nombre}} 
-                </v-card-text>
-
-              </v-card-text>
-            </v-card>
-          </a>
-          
-        </v-col>
-
-        <v-dialog v-model="loading" persistent width="350" >
-          <v-card color="amber darken-3" dark >
-            <v-card-text class="pa-3 font-weight-black subtitle-1" align="center">
-              Cargando información, por favor espere
-              <v-progress-linear
-                indeterminate
-                color="white"
-                class="my-3"
-              ></v-progress-linear>
-            </v-card-text>
-          </v-card>
-        </v-dialog>
-      </v-row>
-  </v-container>
+    <v-overlay v-if="blocked">
+      <v-progress-circular
+        indeterminate
+        size="64"
+      ></v-progress-circular>
+    </v-overlay>
+    
   </v-app>
 </template>
 
 <script>
+import { mapActions, mapGetters } from 'vuex';
+import Login from '@/views/Login.vue'
+import Home  from '@/views/Home.vue'
 
 export default {
+  components: {
+			Login,
+      Home
+	},
   data: () => ({
     loading: true,
-    AppControl:[]
+    AppControl:[],
+    alerta: { activo: false, texto:'', color:'error', vertical:true },
+    overlay: false,
+    blocked: true,
+
   }),
+  
 
   created(){
-    this.consultaModulos();
+    let that = this
+    // this.overlay = true;
+    if (typeof(Storage) !== "undefined") {
+        // VERIFICO SI EXISTE UN USUARIO ACTIVO 
+        if(localStorage.getItem("KeyLogger") != null){
+          this.validaSession().then( response =>{ // VERIFICO SI LA SESSION DEL KEYLOGGER ESTA ACTIVA
+            const payload = new Object();
+                    payload.id       = response.id_usuario
+                    payload.sistema  = 0
+
+            this.ObtenerDatosUsuario(payload).then(response =>{
+              this.alerta = { activo: true,texto: `HOLA DE NUEVO ${ response.nombre }`, color:'success', vertical:true };
+              setTimeout(()=>{ that.blocked = false; }, 1000);
+
+            }).catch( error=>{ // OBTENGO LA INFORMACION DEL USUARIO
+              this.alerta = { activo: true, texto: error.bodyText, color:'error', vertical:true }
+              // console.log('ERROR DATOS')
+            }).finally(()=> { 
+              setTimeout(()=>{ that.blocked = false; }, 1000);
+            });  
+
+          }).catch( error =>{
+            this.alerta = { activo: true, texto: error.bodyText, color:'error', vertical:true }
+            // this.$router.push({ name: 'Login' });         // SI ES DIFERENTE ENRUTO A PAGINA ARRANQUE
+          }).finally(()=> { 
+            setTimeout(()=>{ that.blocked = false; }, 1000);
+          });
+
+          // if(this.$router.currentRoute.name != 'pagina-arranque'){  // COMPARO LA RUTA EN LA QUE ME ENCUENTRO 
+          //   this.blocked = false;
+          //   // this.$router.push({ name: 'pagina-arranque' });         // SI ES DIFERENTE ENRUTO A PAGINA ARRANQUE
+          // }
+        }else{ 
+            // console.log('ELSE KEYLOG')
+          //  if(this.$router.currentRoute.name != 'Login'){  // COMPARO LA RUTA EN LA QUE ME ENCUENTRO 
+            this.blocked = false;
+          //   // this.$router.push({ name: 'Login' });         // SI ES DIFERENTE ENRUTO A PAGINA ARRANQUE
+          // }
+        }
+
+    } else {
+      this.alerta = { activo: true, texto:'Este navegador no es compatible con el sistema.', color:'error', vertical:true }
+      // this.$router.push({ name: 'Login' });
+    }
+
   },
 
+  computed:{ ...mapGetters('Login',['getLogeado']) },
+
   methods:{
+    ...mapActions('Login',['ObtenerDatosUsuario','validaSession']),
+
     consultaModulos(){
       this.$http.get('gama.etiquetas').then(response =>{
         this.AppControl = response.body
@@ -94,13 +111,3 @@ export default {
   }
 };
 </script>
-
-<style scoped>
-  
-  #contenedor{
-    background: #12c2e9;  
-    background: -webkit-linear-gradient(to right, #f64f59, #c471ed, #12c2e9);  
-    background: linear-gradient(to right, #f64f59, #c471ed, #12c2e9); 
-  }
- 
-</style>
